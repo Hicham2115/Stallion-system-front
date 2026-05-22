@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import {
   Search, UserPlus, MoreVertical, Edit, KeyRound, ShieldOff,
   ShieldCheck, Trash2, ChevronLeft, ChevronRight, RefreshCw,
-  Users, UserCheck, UserX, Shield,
+  Users, UserCheck, UserX, Shield, Star,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { User, Role, UsersResponse } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { cn, getInitials, formatDate, formatRelativeTime } from '@/lib/utils';
 import UserModal from './UserModal';
 
@@ -19,7 +20,6 @@ const ROLE_COLORS: Record<Role, string> = {
   TEAM_MEMBER: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
 };
 
-type Toast = { id: number; message: string; type: 'success' | 'error' };
 type ConfirmAction = {
   title: string;
   message: string;
@@ -31,6 +31,7 @@ type ConfirmAction = {
 export default function TeamManagement() {
   const { t } = useTranslation();
   const { user: me, isSuperAdmin, roleLevel } = useAuth();
+  const { toast } = useToast();
 
   const ROLE_LABELS: Record<Role, string> = {
     SUPER_ADMIN: t('team.superAdmin'),
@@ -52,13 +53,6 @@ export default function TeamManagement() {
   const [resetModal, setResetModal] = useState<User | null>(null);
   const [newPwd, setNewPwd] = useState('');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  function toast(message: string, type: 'success' | 'error' = 'success') {
-    const id = Date.now();
-    setToasts(t => [...t, { id, message, type }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
-  }
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -139,6 +133,16 @@ export default function TeamManagement() {
     fetchUsers();
   }
 
+  async function handleToggleCloser(user: User) {
+    try {
+      await api.put(`/users/${user.id}/toggle-closer`);
+      toast(user.isCloser ? `${user.name} removed as closer` : `${user.name} marked as closer`);
+      fetchUsers();
+    } catch {
+      toast('Failed to update closer status', 'error');
+    }
+  }
+
   async function handleDelete(user: User) {
     setConfirm({
       title: t('team.deleteTitle'),
@@ -183,20 +187,6 @@ export default function TeamManagement() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-
-      {/* Toast notifications */}
-      <div className="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none">
-        {toasts.map(t => (
-          <div key={t.id} className={cn(
-            'px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto animate-in slide-in-from-bottom-2 duration-300',
-            t.type === 'success'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-red-600 text-white',
-          )}>
-            {t.message}
-          </div>
-        ))}
-      </div>
 
       {/* Header */}
       <div className="page-header">
@@ -369,6 +359,18 @@ export default function TeamManagement() {
                                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                 >
                                   <KeyRound className="w-4 h-4 text-slate-400" /> {t('team.resetPassword')}
+                                </button>
+                                <button
+                                  onClick={() => { handleToggleCloser(u); setOpenMenu(null); }}
+                                  className={cn(
+                                    'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                                    u.isCloser
+                                      ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700',
+                                  )}
+                                >
+                                  <Star className={cn('w-4 h-4', u.isCloser ? 'fill-amber-500 text-amber-500' : 'text-slate-400')} />
+                                  {u.isCloser ? 'Remove as Closer' : 'Mark as Closer'}
                                 </button>
                                 <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
                                 {u.suspended ? (

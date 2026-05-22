@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/stallion.svg" />
@@ -8,10 +8,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-iy1DUuv8.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-tRCHcsHt.css">
+    <script type="module" crossorigin src="/assets/index-BzH537cj.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CErjn9R1.css">
   </head>
   <body class="h-full bg-slate-50 dark:bg-stallion-dark font-sans antialiased">
+    <script>
+      (function() {
+        var t = localStorage.getItem('stallion_theme') || 'dark';
+        if (t === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      })();
+    </script>
     <div id="root" class="h-full"></div>
   </body>
 </html>
