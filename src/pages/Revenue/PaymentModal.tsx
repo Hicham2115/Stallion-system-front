@@ -3,6 +3,14 @@ import { X, Upload, FileText, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { Payment, Client, PaymentMethod, PaymentStatus } from '@/types';
+import { cn } from '@/lib/utils';
+
+const CURRENCIES = ['MAD', 'USD', 'EUR'] as const;
+type PaymentCurrency = typeof CURRENCIES[number];
+const TO_MAD: Record<PaymentCurrency, number> = { MAD: 1, USD: 9.85, EUR: 10.85 };
+function toMAD(amount: number, from: PaymentCurrency): number {
+  return from === 'MAD' ? amount : amount * TO_MAD[from];
+}
 
 const METHODS: PaymentMethod[] = ['BANK_TRANSFER', 'CREDIT_CARD', 'CASH', 'CHECK', 'PAYPAL', 'OTHER'];
 const STATUSES: PaymentStatus[] = ['PAID', 'PENDING', 'OVERDUE'];
@@ -29,6 +37,7 @@ const defaultForm = {
 export default function PaymentModal({ open, onClose, payment, clients, onSaved }: Props) {
   const { t } = useTranslation();
   const [form, setForm] = useState(defaultForm);
+  const [currency, setCurrency] = useState<PaymentCurrency>('MAD');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,6 +56,7 @@ export default function PaymentModal({ open, onClose, payment, clients, onSaved 
       });
     } else {
       setForm(defaultForm);
+      setCurrency('MAD');
     }
     setError('');
   }, [payment, open]);
@@ -71,7 +81,7 @@ export default function PaymentModal({ open, onClose, payment, clients, onSaved 
     try {
       const payload = {
         ...form,
-        amount: parseFloat(form.amount),
+        amount: toMAD(parseFloat(form.amount), currency),
         date: new Date(form.date).toISOString(),
         pdfUrl: form.pdfUrl || null,
       };
@@ -110,7 +120,26 @@ export default function PaymentModal({ open, onClose, payment, clients, onSaved 
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">{t('revenue.amountLabel')}</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label">{t('revenue.amountLabel')}</label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-700/50">
+                  {CURRENCIES.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCurrency(c)}
+                      className={cn(
+                        'px-2 py-0.5 text-xs font-bold transition-colors',
+                        currency === c
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-transparent text-slate-400 hover:text-white',
+                      )}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <input className="input" type="number" required min="0" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} placeholder="0.00" />
             </div>
             <div>

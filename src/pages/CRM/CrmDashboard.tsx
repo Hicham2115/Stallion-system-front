@@ -32,6 +32,7 @@ import {
 } from "recharts";
 
 interface AnalyticsData {
+  rates?: Record<string, number>;
   summary: {
     totalOrders: number;
     totalRevenue: number;
@@ -124,7 +125,26 @@ interface Props {
 
 export default function CrmDashboard({ onNavigate, analyticsMode }: Props) {
   const { t } = useTranslation();
-  const { fmt } = useCrmCurrency();
+  const { fmt, currency } = useCrmCurrency();
+
+  // fmt that uses the rates returned by the analytics response so that
+  // MAD→USD and USD→MAD use the exact same rate — no drift.
+  const fmtStable = (amount: number, from: 'MAD' | 'USD' | 'EUR' = 'MAD'): string => {
+    const rates = data?.rates;
+    if (!rates) return fmt(amount, from);
+    let converted: number;
+    if (from === currency) {
+      converted = amount;
+    } else {
+      const fromToMAD = rates[from] ?? 1;
+      const toToMAD   = rates[currency] ?? 1;
+      converted = amount * fromToMAD / toToMAD;
+    }
+    const n = Math.round(converted);
+    if (currency === 'USD') return '$' + n.toLocaleString('en-US');
+    if (currency === 'EUR') return '€' + n.toLocaleString('en-DE');
+    return n.toLocaleString('en-MA') + ' MAD';
+  };
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -199,14 +219,14 @@ export default function CrmDashboard({ onNavigate, analyticsMode }: Props) {
     ? [
         {
           label: t('crm.totalRevenue'),
-          value: fmt(s.totalRevenue),
+          value: fmtStable(s.totalRevenue),
           icon: DollarSign,
           color: "text-amber-500",
           bg: "bg-amber-500/10",
         },
         {
           label: t('crm.netProfit'),
-          value: fmt(s.totalNetProfit),
+          value: fmtStable(s.totalNetProfit),
           icon: TrendingUp,
           color: s.totalNetProfit >= 0 ? "text-emerald-500" : "text-red-500",
           bg: s.totalNetProfit >= 0 ? "bg-emerald-500/10" : "bg-red-500/10",
@@ -248,28 +268,28 @@ export default function CrmDashboard({ onNavigate, analyticsMode }: Props) {
         },
         {
           label: t('crm.averageOrder'),
-          value: fmt(s.avgOrderValue),
+          value: fmtStable(s.avgOrderValue),
           icon: Package,
           color: "text-orange-500",
           bg: "bg-orange-500/10",
         },
         {
           label: t('crm.adSpend'),
-          value: fmt(s.totalAdSpend),
+          value: fmtStable(s.totalAdSpend),
           icon: TrendingUp,
           color: "text-pink-500",
           bg: "bg-pink-500/10",
         },
         {
           label: t('crm.commissions'),
-          value: fmt(s.totalCommissions),
+          value: fmtStable(s.totalCommissions),
           icon: Award,
           color: "text-indigo-500",
           bg: "bg-indigo-500/10",
         },
         {
           label: t('crm.totalCosts'),
-          value: fmt(s.totalLinkedCosts > 0 ? s.totalLinkedCosts : s.totalProductCost),
+          value: fmtStable(s.totalLinkedCosts > 0 ? s.totalLinkedCosts : s.totalProductCost),
           icon: Package,
           color: "text-slate-400",
           bg: "bg-slate-500/10",
@@ -399,7 +419,7 @@ export default function CrmDashboard({ onNavigate, analyticsMode }: Props) {
                         item.color,
                       )}
                     >
-                      {fmt(Math.abs(item.value))}
+                      {fmtStable(Math.abs(item.value))}
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
                       {item.label}
@@ -441,7 +461,7 @@ export default function CrmDashboard({ onNavigate, analyticsMode }: Props) {
                   />
                   <YAxis tick={{ fontSize: 11 }} stroke="#6b7280" />
                   <Tooltip
-                    formatter={(v: number) => fmt(v)}
+                    formatter={(v: number) => fmtStable(v)}
                     contentStyle={{
                       background: "#1e293b",
                       border: "none",
